@@ -108,6 +108,9 @@ static constexpr int8_t PIN_UNUSED = -1;
 	//Initializing function
 	void InitializeADC();	
 	//ADS1256(int drate, int pga, int byteOrder, bool bufen);
+
+	//Bind user supplied function to a data ready event
+	void setInterruptFunction(void (*userSuppliedFunction)(void));
 	
 	//Read a register
 	long readRegister(uint8_t registerAddress);
@@ -135,9 +138,15 @@ static constexpr int8_t PIN_UNUSED = -1;
 
 	//Get a single conversion
 	long readSingle();
+
+	//Start AD to read the recently selected input channel
+	void startSingleContinuousConversion();
 	
 	//Single input continuous reading
 	long readSingleContinuous();
+
+	//Single input continuous reading without checking for data availability
+	long readSingleContinuousImmediately();
 	
 	//Cycling through the single-ended inputs
 	long cycleSingle(); //Ax + COM

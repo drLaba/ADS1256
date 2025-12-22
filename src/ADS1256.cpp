@@ -94,6 +94,11 @@ void ADS1256::InitializeADC()
   _isAcquisitionRunning = false; //MCU will be waiting to start a continuous acquisition
 }
 
+void ADS1256::setInterruptFunction(void (*userSuppliedFunction)(void)) //Bind user supplied function to a data ready event
+{
+	attachInterrupt(digitalPinToInterrupt(_DRDY_pin), userSuppliedFunction, FALLING);
+}
+
 void ADS1256::waitForLowDRDY()
 {		    
     while (digitalRead(_DRDY_pin) == HIGH) {} 
@@ -551,8 +556,8 @@ long ADS1256::readSingle() //Reading a single value ONCE using the RDATA command
 	return(_outputValue);
 }
 
-long ADS1256::readSingleContinuous() //Reads the recently selected input channel using RDATAC
-{		
+void ADS1256::startSingleContinuousConversion() //Sending RDATAC to start the continuous conversion
+{
 	if(_isAcquisitionRunning == false)
 	{
 	  _isAcquisitionRunning = true;
@@ -562,10 +567,13 @@ long ADS1256::readSingleContinuous() //Reads the recently selected input channel
 	  _spi->transfer(0b00000011);  //Issue RDATAC (0000 0011) 
 	  delayMicroseconds(7); //Wait t6 time (~6.51 us) REF: P34, FIG:30.	  
 	}
-	else
-	{
-		waitForLowDRDY();
-	}	
+}
+
+long ADS1256::readSingleContinuous() //Reads the recently selected input channel using RDATAC
+{
+	startSingleContinuousConversion();
+
+	waitForLowDRDY();
 	
 	_outputBuffer[0] = _spi->transfer(0); // MSB 
 	_outputBuffer[1] = _spi->transfer(0); // Mid-byte
@@ -576,6 +584,18 @@ long ADS1256::readSingleContinuous() //Reads the recently selected input channel
 	
 	waitForHighDRDY();
 	
+	return _outputValue;
+}
+
+long ADS1256::readSingleContinuousImmediately() //Reads the recently selected input channel using RDATAC without waiting for correct state of DRDY pin
+{
+	_outputBuffer[0] = _spi->transfer(0); // MSB
+	_outputBuffer[1] = _spi->transfer(0); // Mid-byte
+	_outputBuffer[2] = _spi->transfer(0); // LSB
+
+	_outputValue = ((long)_outputBuffer[0]<<16) | ((long)_outputBuffer[1]<<8) | (_outputBuffer[2]);
+	_outputValue = convertSigned24BitToLong(_outputValue);
+
 	return _outputValue;
 }
 
